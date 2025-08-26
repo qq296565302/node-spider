@@ -1,0 +1,35 @@
+{
+  "name": "dqd-node-spider",
+  "version": "1.0.0",
+  "description": "A Node.js web scraper that extracts data from websites and saves to MongoDB",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "web-scraper",
+    "crawler",
+    "mongodb",
+    "nodejs",
+    "cheerio",
+    "axios"
+  ],
+  "author": "Zhao Shijun",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "mongoose": "^8.0.0",
+    "dotenv": "^16.3.1",
+    "user-agents": "^1.1.0",
+    "delay": "^6.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
