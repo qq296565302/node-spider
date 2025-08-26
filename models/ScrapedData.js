@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * 爬取数据的Schema定义
+ * Nuxt网站爬取数据的Schema定义
  */
 const scrapedDataSchema = new mongoose.Schema({
   // 数据来源URL
@@ -17,28 +17,35 @@ const scrapedDataSchema = new mongoose.Schema({
     required: true
   },
   
-  // 页面内容
+  // Nuxt数据内容（JSON字符串）
   content: {
     type: String,
     required: true
   },
   
-  // 提取的链接
-  links: [{
-    text: String,
-    url: String
+  // Nuxt数据类型
+  dataType: {
+    type: String,
+    default: 'window.__NUXT__',
+    enum: ['window.__NUXT__', 'nuxt-state', 'other']
+  },
+  
+  // 提取的数据键列表
+  dataKeys: [{
+    type: String
   }],
   
-  // 提取的图片
-  images: [{
-    alt: String,
-    src: String
-  }],
+  // JSON文件保存路径
+  filePath: {
+    type: String,
+    default: null
+  },
   
-  // 自定义数据字段（可根据具体需求调整）
+  // Nuxt特定的自定义数据字段
   customData: {
     type: mongoose.Schema.Types.Mixed,
-    default: {}
+    default: {},
+    // 可以包含：dataKeys, filePath, extractedAt, dataSize等
   },
   
   // 爬取时间
@@ -48,11 +55,11 @@ const scrapedDataSchema = new mongoose.Schema({
     index: true
   },
   
-  // 数据状态
+  // 处理状态
   status: {
     type: String,
-    enum: ['pending', 'processed', 'failed'],
-    default: 'pending'
+    enum: ['success', 'failed', 'partial'],
+    default: 'success'
   },
   
   // 错误信息（如果有）
