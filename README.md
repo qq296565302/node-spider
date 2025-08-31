@@ -125,16 +125,44 @@ async function main() {
     // 初始化应用
     await app.init();
     
-    // 爬取 Nuxt 网站
-    const result = await app.scrapeNuxtSite(
+    // 基本爬取（使用默认数据库配置）
+    const result1 = await app.scrapeNuxtSite(
       'https://www.dongqiudi.com/data/1',
       'dongqiudi-data.json'
     );
     
-    if (result.success) {
-      console.log('爬取成功！');
-      console.log('数据文件:', result.filePath);
-      console.log('数据键:', result.dataKeys);
+    // 自定义数据库配置的爬取
+    const dbOptions = {
+      collectionName: 'sports_news',
+      fieldMapping: {
+        url: 'source_url',
+        title: 'news_title',
+        data: 'content'
+      },
+      customFields: {
+        category: 'football',
+        source: 'dongqiudi',
+        language: 'zh-CN'
+      },
+      dataType: 'sports_article'
+    };
+    
+    const result2 = await app.scrapeNuxtSite(
+      'https://www.dongqiudi.com/match/1234567',
+      'dongqiudi-match.json',
+      dbOptions
+    );
+    
+    if (result1.success) {
+      console.log('基本爬取成功！');
+      console.log('数据文件:', result1.filePath);
+      console.log('数据键:', result1.dataKeys);
+    }
+    
+    if (result2.success) {
+      console.log('自定义配置爬取成功！');
+      console.log('数据文件:', result2.filePath);
+      console.log('自定义集合:', dbOptions.collectionName);
     }
     
   } catch (error) {
@@ -182,6 +210,28 @@ DQD_Node-Spider/
   errorMessage: String     // 错误信息
 }
 ```
+
+## 💾 数据库集成
+
+项目支持将爬取的数据保存到MongoDB数据库中，并提供了通用的数据库保存方法。
+
+### 配置
+
+1. 设置环境变量：
+```bash
+SAVE_TO_DB=true
+MONGODB_URI=mongodb://localhost:27017/nuxt_spider
+```
+
+### 默认数据结构
+
+默认情况下，数据会保存到`scraped_data`集合中，包含以下字段：
+- `url`: 爬取的URL
+- `title`: 页面标题
+- `data`: 爬取的数据
+- `timestamp`: 爬取时间
+- `success`: 爬取是否成功
+- `dataType`: 数据类型（默认为'nuxt'）
 
 ## ⚙️ 配置选项
 
