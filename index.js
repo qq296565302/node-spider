@@ -1,6 +1,7 @@
 const { connectDB, disconnectDB } = require('./config/database');
 const NuxtScraper = require('./spider/NuxtScraper');
 const { spiderLeague } = require('./spider/SpiderLeague');
+const { leagues } = require('./config/league');
 require('dotenv').config();
 
 /**
@@ -24,12 +25,7 @@ function handleCommandLine() {
 
   switch (command) {
     case 'league':
-      if (args.length < 2) {
-        console.error('错误: 请提供要爬取的URL');
-        console.log('用法: node index.js league <url> <leagueName> <filename>');
-        process.exit(1);
-      }
-      spiderLeague(args[1], args[2], args[3]);
+      spiderLeague(leagues);
       break;
     default:
       console.error(`未知命令: ${command}`);
