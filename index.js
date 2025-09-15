@@ -1,7 +1,9 @@
 const { connectDB, disconnectDB } = require('./config/database');
 const NuxtScraper = require('./spider/NuxtScraper');
 const { spiderLeague } = require('./spider/SpiderLeague');
+const { spiderDynamicNews } = require('./spider/SpiderDynamicNews');
 const { leagues } = require('./config/league');
+const { createServer } = require('./server');
 require('dotenv').config();
 
 /**
@@ -15,9 +17,13 @@ function handleCommandLine() {
     console.log('用法:');
     console.log('  node index.js <command> [options]');
     console.log('\n命令:');
-    console.log('  team <url> <leagueName> <filename>  - 爬取球队数据');
+    console.log('  league                              - 爬取联赛数据');
+    console.log('  dynamicNews <url>                   - 爬取动态新闻');
+    console.log('  server [port]                       - 启动HTTP服务器');
     console.log('\n示例:');
-    console.log('  node index.js team https://www.dongqiudi.com/data/1 英超 Premier');
+    console.log('  node index.js league');
+    console.log('  node index.js dynamicNews https://example.com');
+    console.log('  node index.js server 3000');
     return;
   }
 
@@ -26,6 +32,17 @@ function handleCommandLine() {
   switch (command) {
     case 'league':
       spiderLeague(leagues);
+      break;
+    case 'dynamicNews':
+      spiderDynamicNews(args[1]);
+      break;
+    case 'server':
+      const port = args[1] ? parseInt(args[1]) : 3000;
+      if (isNaN(port) || port < 1 || port > 65535) {
+        console.error('无效的端口号，请使用1-65535之间的数字');
+        process.exit(1);
+      }
+      createServer(port);
       break;
     default:
       console.error(`未知命令: ${command}`);
