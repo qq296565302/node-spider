@@ -1,6 +1,7 @@
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
+const Logger = require('../utils/logger');
 require('dotenv').config();
 
 /**
@@ -19,13 +20,13 @@ class NuxtScraper {
    */
   async fetchPage(url) {
     try {
-      console.log(`正在获取页面: ${url}`);
-
+      Logger.progress(`正在获取页面: ${url}`);
+      
       const response = await axios.get(url, {
         headers: {
           'User-Agent': this.userAgent,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
           'Accept-Encoding': 'gzip, deflate, br',
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1',
@@ -34,11 +35,11 @@ class NuxtScraper {
           'Sec-Fetch-Site': 'none',
           'Cache-Control': 'max-age=0'
         },
-        timeout: 15000,
+        timeout: 30000,
         maxRedirects: 5
       });
 
-      console.log(`页面获取成功，状态码: ${response.status}`);
+      Logger.success(`页面获取成功，状态码: ${response.status}`);
       return response.data;
     } catch (error) {
       console.error('获取页面失败:', error.message);
@@ -53,8 +54,8 @@ class NuxtScraper {
    */
   async extractNuxtData(html) {
     try {
-      console.log('正在提取window.__NUXT__数据...');
-      console.log('HTML长度:', html.length);
+      Logger.info('正在提取window.__NUXT__数据...');
+      Logger.data('HTML长度', `${html.length} 字符`);
 
       // 先保存HTML到文件以便调试
       this.saveHtmlForDebug(html);
@@ -64,7 +65,7 @@ class NuxtScraper {
       const match = html.match(nuxtRegex);
 
       if (!match) {
-        console.log('未找到window.__NUXT__数据，尝试其他模式...');
+        Logger.warn('未找到window.__NUXT__数据，尝试其他模式...');
 
         // 尝试更宽松的匹配模式
         const alternativeRegex = /__NUXT__\s*=\s*([\s\S]*?);/i;
@@ -76,9 +77,9 @@ class NuxtScraper {
           const nuxtScripts = html.match(nuxtScriptRegex);
 
           if (nuxtScripts) {
-            console.log(`找到 ${nuxtScripts.length} 个包含NUXT的脚本标签`);
+            Logger.info(`找到 ${nuxtScripts.length} 个包含NUXT的脚本标签`);
             nuxtScripts.forEach((script, index) => {
-              console.log(`脚本 ${index + 1} 片段:`, script.substring(0, 200) + '...');
+              Logger.debug(`脚本 ${index + 1} 片段:`, script.substring(0, 200) + '...');
             });
           }
 
@@ -87,15 +88,15 @@ class NuxtScraper {
           const jsonMatches = html.match(jsonRegex);
 
           if (jsonMatches) {
-            console.log(`找到 ${jsonMatches.length} 个可能的JSON数据块`);
+            Logger.info(`找到 ${jsonMatches.length} 个可能的JSON数据块`);
             // 尝试解析前几个JSON块
             for (let i = 0; i < Math.min(3, jsonMatches.length); i++) {
               try {
                 const parsed = JSON.parse(jsonMatches[i]);
                 if (parsed && typeof parsed === 'object') {
-                  console.log(`JSON块 ${i + 1} 解析成功，包含键:`, Object.keys(parsed).slice(0, 5));
+                  Logger.debug(`JSON块 ${i + 1} 解析成功，包含键:`, Object.keys(parsed).slice(0, 5));
                   if (Object.keys(parsed).some(key => key.toLowerCase().includes('data') || key.toLowerCase().includes('state'))) {
-                    console.log('发现可能的数据块，尝试使用此数据');
+                    Logger.success('发现可能的数据块，尝试使用此数据');
                     return parsed;
                   }
                 }
@@ -105,15 +106,15 @@ class NuxtScraper {
             }
           }
 
-          console.log('未找到任何NUXT数据');
+          Logger.error('未找到任何NUXT数据');
           return null;
         }
 
-        console.log('找到替代模式的NUXT数据');
+        Logger.success('找到替代模式的NUXT数据');
         return await this.parseNuxtData(altMatch[1]);
       }
 
-      console.log('找到window.__NUXT__数据');
+      Logger.success('找到window.__NUXT__数据');
       return await this.parseNuxtData(match[1]);
 
     } catch (error) {
@@ -130,9 +131,9 @@ class NuxtScraper {
     try {
       const debugPath = path.join(__dirname, 'debug-page.html');
       await fs.writeFile(debugPath, html, 'utf8');
-      console.log(`调试HTML已保存到: ${debugPath}`);
+      Logger.info(`调试HTML已保存到: ${debugPath}`);
     } catch (error) {
-      console.log('保存调试HTML失败:', error.message);
+      Logger.error('保存调试HTML失败:', error.message);
     }
   }
 
@@ -151,33 +152,33 @@ class NuxtScraper {
         cleanData = cleanData.slice(0, -1);
       }
 
-      console.log('原始NUXT数据片段:', cleanData.substring(0, 300) + '...');
+      Logger.debug('原始NUXT数据片段:', cleanData.substring(0, 300) + '...');
 
       // 检查是否是函数形式
       if (cleanData.startsWith('(function(')) {
-        console.log('检测到函数形式的NUXT数据，尝试执行...');
+        Logger.info('检测到函数形式的NUXT数据，尝试执行...');
 
         try {
           // 创建一个安全的执行环境
           const result = this.executeFunctionString(cleanData);
           if (result) {
-            console.log('函数执行成功，返回数据');
+            Logger.success('函数执行成功，返回数据');
             return result;
           }
         } catch (funcError) {
-          console.log('函数执行失败，尝试其他方法:', funcError.message);
+          Logger.warn('函数执行失败，尝试其他方法:', funcError.message);
         }
 
         // 如果函数执行失败，尝试提取函数内的返回值
         const returnMatch = cleanData.match(/return\s+({[\s\S]*?})\s*\}\)\([^)]*\)/);
         if (returnMatch) {
-          console.log('尝试提取函数返回值...');
+          Logger.info('尝试提取函数返回值...');
           try {
             const returnData = JSON.parse(returnMatch[1]);
-            console.log('函数返回值解析成功');
+            Logger.success('函数返回值解析成功');
             return returnData;
           } catch (returnError) {
-            console.log('函数返回值解析失败:', returnError.message);
+            Logger.warn('函数返回值解析失败:', returnError.message);
           }
         }
       }
@@ -185,10 +186,10 @@ class NuxtScraper {
       // 尝试直接解析为JSON
       try {
         const parsedData = JSON.parse(cleanData);
-        console.log('直接JSON解析成功');
+        Logger.success('直接JSON解析成功');
         return parsedData;
       } catch (jsonError) {
-        console.log('直接JSON解析失败:', jsonError.message);
+        Logger.warn('直接JSON解析失败:', jsonError.message);
       }
 
       // 如果都失败了，保存原始数据供分析
@@ -196,8 +197,8 @@ class NuxtScraper {
 
       return null;
     } catch (error) {
-      console.error('解析NUXT数据时出错:', error.message);
-      console.log('原始数据片段:', dataString.substring(0, 200) + '...');
+      Logger.error('解析NUXT数据时出错:', error.message);
+      Logger.debug('原始数据片段:', dataString.substring(0, 200) + '...');
       return null;
     }
   }
@@ -211,11 +212,11 @@ class NuxtScraper {
     try {
       // 这是一个简化的方法，实际情况可能需要更复杂的处理
       // 注意：eval是危险的，这里仅用于测试
-      console.log('警告：使用eval执行函数，仅用于测试目的');
+      Logger.warn('警告：使用eval执行函数，仅用于测试目的');
       const result = eval(`(${functionString})`);
       return result;
     } catch (error) {
-      console.log('函数执行失败:', error.message);
+      Logger.error('函数执行失败:', error.message);
       return null;
     }
   }
@@ -228,9 +229,9 @@ class NuxtScraper {
     try {
       const rawPath = path.join(__dirname, 'raw-nuxt-data.txt');
       await fs.writeFile(rawPath, rawData, 'utf8');
-      console.log(`原始NUXT数据已保存到: ${rawPath}`);
+      Logger.info(`原始NUXT数据已保存到: ${rawPath}`);
     } catch (error) {
-      console.log('保存原始数据失败:', error.message);
+      Logger.error('保存原始数据失败:', error.message);
     }
   }
 
@@ -256,8 +257,8 @@ class NuxtScraper {
       const jsonString = JSON.stringify(fullData, null, 2);
       await fs.writeFile(filePath, jsonString, 'utf8');
 
-      console.log(`数据已保存到: ${filePath}`);
-      console.log(`文件大小: ${(jsonString.length / 1024).toFixed(2)} KB`);
+      Logger.success(`数据已保存到: ${filePath}`);
+      Logger.info(`文件大小: ${(jsonString.length / 1024).toFixed(2)} KB`);
 
       return filePath;
     } catch (error) {
@@ -272,17 +273,17 @@ class NuxtScraper {
    */
   analyzeData(data) {
     if (!data) {
-      console.log('没有数据可分析');
+      Logger.warn('没有数据可分析');
       return;
     }
 
-    console.log('\n=== NUXT数据结构分析 ===');
-    console.log('数据类型:', typeof data);
+    Logger.info('\n=== NUXT数据结构分析 ===');
+    Logger.data('数据类型:', typeof data);
 
     if (typeof data === 'object') {
       const keys = Object.keys(data);
-      console.log('顶级键数量:', keys.length);
-      console.log('顶级键列表:', keys.slice(0, 10)); // 只显示前10个键
+      Logger.data('顶级键数量:', keys.length);
+      Logger.data('顶级键列表:', keys.slice(0, 10)); // 只显示前10个键
 
       // 分析每个顶级键的数据类型
       keys.slice(0, 5).forEach(key => {
@@ -292,11 +293,11 @@ class NuxtScraper {
           typeof value === 'object' && value !== null ? Object.keys(value).length :
             typeof value === 'string' ? value.length : 'N/A';
 
-        console.log(`  ${key}: ${type} (size: ${size})`);
+        Logger.data(`  ${key}: ${type} (size: ${size})`);
       });
     }
 
-    console.log('========================\n');
+    Logger.info('========================\n');
   }
 
   /**
@@ -307,7 +308,7 @@ class NuxtScraper {
    */
   async scrape(url, filename) {
     try {
-      console.log('开始爬取Nuxt网站数据...');
+      Logger.info('开始爬取Nuxt网站数据...');
 
       // 获取页面HTML
       const html = await this.fetchPage(url);
@@ -328,7 +329,7 @@ class NuxtScraper {
         filePath = await this.saveToJson(nuxtData, filename);
       }
 
-      console.log('爬取完成！');
+      Logger.success('爬取完成！');
 
       return {
         success: true,
@@ -339,7 +340,7 @@ class NuxtScraper {
       };
 
     } catch (error) {
-      console.error('爬取失败:', error.message);
+      Logger.error('爬取失败:', error.message);
 
       return {
         success: false,
