@@ -1,19 +1,55 @@
 const NuxtScraper = require('./NuxtScraper');
 const { connectDB, disconnectDB, saveToCollection } = require('../config/database');
-const { leagues: defaultLeagues } = require('../config/league');
+
+/**
+ * 联赛配置数组
+ * 包含每个联赛的URL、联赛名称和文件名
+ */
+const leaguesConfig = [
+    {
+        url: 'https://www.dongqiudi.com/data/1',
+        leagueName: '英超',
+        filename: ''
+    },
+    {
+        url: 'https://www.dongqiudi.com/data/3',
+        leagueName: '西甲',
+        filename: ''
+    },
+    {
+        url: 'https://www.dongqiudi.com/data/2',
+        leagueName: '意甲',
+        filename: ''
+    },
+    {
+        url: 'https://www.dongqiudi.com/data/4',
+        leagueName: '德甲',
+        filename: ''
+    },
+    {
+        url: 'https://www.dongqiudi.com/data/10',
+        leagueName: '法甲',
+        filename: ''
+    },
+    {
+        url: 'https://www.dongqiudi.com/data/5',
+        leagueName: '欧冠',
+        filename: ''
+    }
+]
 
 /**
  * 爬取联赛数据的函数
  * @param {Array} leagues - 联赛配置数组（可选，默认使用配置文件中的联赛）
  */
-async function spiderLeague(leagues = defaultLeagues) {
+async function spiderLeague() {
     const app = new NuxtScraper();
     try {
         await connectDB();
         console.log('开始爬取联赛数据，共', leagues.length, '个联赛');
 
         // 使用for...of循环来正确处理异步操作
-        for (const league of leagues) {
+        for (const league of leaguesConfig) {
             const { url, leagueName, filename } = league;
             console.log(`正在爬取 ${leagueName} 数据...`);
 
@@ -60,5 +96,7 @@ async function spiderLeague(leagues = defaultLeagues) {
         await disconnectDB();
     }
 }
+
+
 
 module.exports = { spiderLeague };
